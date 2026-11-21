@@ -1,0 +1,5 @@
+/* Hallmark · shape: app screen · theme: Dose · genre: modern-minimal · signature: Kardex ledger · v2.0.0 */
+/* Critique: the ledger and entry forms make stock and costs easy to compare by row. */
+@import "../../../shared/styles.css";
+@source "./";
+@source "../features";

@@ -1,0 +1,139 @@
+name: examen-hce
+
+x-backend: &backend
+  build: ./backend
+  init: true
+
+x-db-env: &db-env
+  DB_HOST: db
+  DB_PORT: 1433
+  DB_NAME: HceInventory
+  DB_USER: sa
+  DB_PASSWORD: ${MSSQL_SA_PASSWORD:?Copia .env.example a .env}
+  DB_ENCRYPT: 'false'
+  DB_TRUST_SERVER_CERTIFICATE: 'true'
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Copia .env.example a .env}
+    volumes:
+      - sql-data:/var/opt/mssql
+    networks: [data]
+    healthcheck:
+      test: [CMD-SHELL, 'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -Q "SET NOCOUNT ON; SELECT 1" > /dev/null']
+      interval: 5s
+      timeout: 6s
+      retries: 30
+      start_period: 15s
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: [/opt/mssql-tools18/bin/sqlcmd]
+    command: [-S, db, -U, sa, -C, -b, -d, master, -i, init.sql]
+    working_dir: /database
+    environment:
+      SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Copia .env.example a .env}
+    volumes:
+      - ./database:/database:ro
+    networks: [data]
+    depends_on:
+      db: { condition: service_healthy }
+
+  catalog:
+    <<: *backend
+    command: [node, dist/catalog/main.js]
+    environment:
+      <<: *db-env
+      HOST: 0.0.0.0
+      PORT: 4001
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    networks: [services, data]
+
+  inventory:
+    <<: *backend
+    command: [node, dist/inventory/main.js]
+    environment:
+      <<: *db-env
+      HOST: 0.0.0.0
+      PORT: 4002
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    networks: [services, data]
+
+  gateway:
+    <<: *backend
+    command: [node, dist/gateway/main.js]
+    environment:
+      PORT: 3001
+      CATALOG_HOST: catalog
+      CATALOG_PORT: 4001
+      INVENTORY_HOST: inventory
+      INVENTORY_PORT: 4002
+      FRONTEND_ORIGIN: http://localhost:3000
+      JWT_SECRET: ${JWT_SECRET:?Copia .env.example a .env}
+      DEMO_USERNAME: ${DEMO_USERNAME:?Copia .env.example a .env}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?Copia .env.example a .env}
+      COOKIE_SECURE: 'false'
+    ports:
+      - '127.0.0.1:3001:3001'
+    depends_on:
+      catalog: { condition: service_started }
+      inventory: { condition: service_started }
+    networks: [web, services]
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3001/api/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  frontend-operations:
+    build:
+      context: ./frontend
+      target: operations
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    init: true
+    networks: [web]
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3000/operaciones/compras").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      target: shell
+      args:
+        OPERATIONS_ORIGIN: http://frontend-operations:3000
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    init: true
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      gateway: { condition: service_healthy }
+      frontend-operations: { condition: service_healthy }
+    networks: [web]
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:3000/login").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+networks:
+  web:
+  services:
+    internal: true
+  data:
+    internal: true
+
+volumes:
+  sql-data:

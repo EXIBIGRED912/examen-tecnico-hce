@@ -1,0 +1,35 @@
+/* Hallmark · shape: app screen · theme: Dose · genre: modern-minimal · dose: white · signature: Kardex ledger · v2.0.0 */
+/* Critique: the inventory work stays visible in one ledger, with green reserved for navigation, action and incoming stock. */
+:root {
+  --color-paper: oklch(97.6% 0.011 88);
+  --color-paper-2: oklch(96.5% 0.02 160);
+  --color-paper-3: oklch(93% 0.036 160);
+  --color-surface: oklch(99.7% 0.004 93);
+  --color-ink: oklch(21% 0.025 170);
+  --color-ink-2: oklch(31% 0.02 170);
+  --color-muted: oklch(49% 0.024 165);
+  --color-rule: oklch(87% 0.022 140);
+  --color-accent: oklch(44% 0.108 160);
+  --color-accent-deep: oklch(37% 0.09 162);
+  --color-accent-soft: oklch(90% 0.055 160);
+  --color-accent-ink: oklch(99% 0.006 160);
+  --color-focus: oklch(45% 0.14 160);
+  --color-error: oklch(39% 0.115 30);
+  --color-error-bg: oklch(96% 0.028 43);
+  --color-warning: oklch(39% 0.075 72);
+  --color-warning-bg: oklch(95% 0.045 91);
+  --color-clear: transparent;
+  --color-backdrop: oklch(21% 0.025 170 / 0.42);
+  --shadow-surface: 0 2px 2px oklch(30% 0.03 165 / 0.04);
+  --shadow-modal: 0 20px 66px oklch(25% 0.035 165 / 0.22);
+  --font-body: "Segoe UI", system-ui, sans-serif;
+  --radius-panel: 14px;
+  --radius-control: 9px;
+  --radius-pill: 999px;
+  --text-label: 0.875rem;
+  --text-body: 1rem;
+  --text-section: 1.125rem;
+  --text-title: 2rem;
+  --dur-micro: 110ms;
+  --dur-short: 160ms;
+}

@@ -1,0 +1,4 @@
+/* Hallmark · shape: app screen · theme: Dose · genre: modern-minimal · signature: Kardex ledger · v2.0.0 */
+/* Critique: the sign-in and catalog share the operations controls and surfaces. */
+@import "../../../shared/styles.css";
+@source "./";

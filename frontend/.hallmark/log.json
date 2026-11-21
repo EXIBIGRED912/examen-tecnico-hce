@@ -1,0 +1,24 @@
+[
+ {
+  "date": "2026-11-20",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "dose",
+  "genre": "modern-minimal",
+  "axes": "light/system-sans/pharmacy-green",
+  "nav": "single top bar",
+  "imagery": "working inventory ledger",
+  "photos": [],
+  "signature": "Kardex ledger with movement detail along each stock row",
+  "sections": [
+   "login",
+   "catalog",
+   "purchase",
+   "sale",
+   "kardex"
+  ],
+  "waived": [],
+  "prompt": "Clinical HCE inventory app for pharmacy staff managing medical supplies and stock movements",
+  "mode": "build"
+ }
+]

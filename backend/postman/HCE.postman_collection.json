@@ -1,0 +1,905 @@
+{
+  "info": {
+    "name": "HCE · Inventario de insumos",
+    "description": "Colección para ejecutar en orden. El gateway local debe estar disponible y Postman debe conservar su almacén de cookies. El login guarda la cookie HttpOnly automáticamente. Cada corrida crea dos lotes de prueba y verifica el documento, los movimientos y el stock.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api"
+    },
+    {
+      "key": "frontendOrigin",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "username",
+      "value": "operador"
+    },
+    {
+      "key": "password",
+      "value": "HceDemo!2026"
+    },
+    {
+      "key": "lot",
+      "value": ""
+    },
+    {
+      "key": "purchaseKey",
+      "value": ""
+    },
+    {
+      "key": "saleKey",
+      "value": ""
+    },
+    {
+      "key": "productA",
+      "value": ""
+    },
+    {
+      "key": "productB",
+      "value": ""
+    },
+    {
+      "key": "purchaseId",
+      "value": ""
+    },
+    {
+      "key": "saleId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Estado del gateway y sus dependencias",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Servicios y SQL Server disponibles', function () { pm.expect(pm.response.json().status).to.equal('ok'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Iniciar sesión",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('lot', 'POSTMAN-' + pm.variables.replaceIn('{{$guid}}'));",
+              "pm.collectionVariables.set('purchaseKey', pm.variables.replaceIn('{{$guid}}'));",
+              "pm.collectionVariables.set('saleKey', pm.variables.replaceIn('{{$guid}}'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('JWT de 30 minutos', function () { pm.expect(pm.response.json().expiresIn).to.equal(1800); });",
+              "pm.test('Cookie HttpOnly', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.match(/\\bHttpOnly\\b/i); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Consultar sesión",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/session",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "session"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Crear Guantes de prueba Postman",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('productA', pm.response.json().id);",
+              "pm.test('Producto creado con stock cero', function () { pm.expect(pm.response.json().stock).to.equal(0); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "products"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Guantes de prueba Postman\",\n  \"lot\": \"{{lot}}-A\",\n  \"cost\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Crear Gasa de prueba Postman",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('productB', pm.response.json().id);",
+              "pm.test('Producto creado con stock cero', function () { pm.expect(pm.response.json().stock).to.equal(0); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "products"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Gasa de prueba Postman\",\n  \"lot\": \"{{lot}}-B\",\n  \"cost\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Actualizar un producto",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/products/{{productA}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "products",
+            "{{productA}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Guantes actualizados Postman\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Listar productos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Incluye los lotes creados', function () { pm.expect(pm.response.json().some((row) => row.id === Number(pm.collectionVariables.get('productA')))).to.equal(true); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "products"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Registrar compra de dos productos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('purchaseId', pm.response.json().id);",
+              "pm.test('Totales de compra', function () { const doc = pm.response.json(); pm.expect([doc.subtotal, doc.igv, doc.total]).to.deep.equal([220, 39.6, 259.6]); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{purchaseKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/purchases",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "purchases"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    { \"productId\": {{productA}}, \"quantity\": 20, \"price\": 10 },\n    { \"productId\": {{productB}}, \"quantity\": 5, \"price\": 4 }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Repetir la compra con la misma clave",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "pm.test('Recupera el mismo documento', function () { pm.expect(pm.response.json().id).to.equal(Number(pm.collectionVariables.get('purchaseId'))); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{purchaseKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/purchases",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "purchases"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    { \"productId\": {{productA}}, \"quantity\": 20, \"price\": 10 },\n    { \"productId\": {{productB}}, \"quantity\": 5, \"price\": 4 }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Listar compras",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/purchases",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "purchases"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Consultar detalle de compra",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Incluye dos líneas', function () { pm.expect(pm.response.json().items).to.have.lengthOf(2); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/purchases/{{purchaseId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "purchases",
+            "{{purchaseId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Rechazar una venta por falta de stock",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/sales",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "sales"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"items\": [{ \"productId\": {{productA}}, \"quantity\": 21 }] }",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Registrar venta de dos productos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('saleId', pm.response.json().id);",
+              "pm.test('Totales de venta según el enunciado', function () { const doc = pm.response.json(); pm.expect([doc.subtotal, doc.igv, doc.total]).to.deep.equal([32.4, 38.23, 70.63]); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{saleKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/sales",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "sales"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    { \"productId\": {{productA}}, \"quantity\": 2 },\n    { \"productId\": {{productB}}, \"quantity\": 1 }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Listar ventas",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/sales",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "sales"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Consultar detalle de venta",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Precio de venta actualizado por la compra', function () { const id = Number(pm.collectionVariables.get('productA')); pm.expect(pm.response.json().items.find((item) => item.productId === id).price).to.equal(13.5); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/sales/{{saleId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "sales",
+            "{{saleId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Listar Kardex",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Stock de guantes y gasa', function () { const rows = pm.response.json(); const stock = (id) => rows.find((row) => row.id === Number(pm.collectionVariables.get(id))).stock; pm.expect([stock('productA'), stock('productB')]).to.deep.equal([18, 4]); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/kardex",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "kardex"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Consultar los movimientos del lote de guantes",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Entrada de 20 y salida de 2', function () { const movements = pm.response.json(); pm.expect(movements.some((m) => m.type === 'Entrada' && m.quantity === 20)).to.equal(true); pm.expect(movements.some((m) => m.type === 'Salida' && m.quantity === 2)).to.equal(true); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/kardex/{{productA}}/movements",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "kardex",
+            "{{productA}}",
+            "movements"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Preservar un producto con transacciones",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/products/{{productA}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "products",
+            "{{productA}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Cerrar sesión",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Origin",
+            "value": "{{frontendOrigin}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/logout",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "logout"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
