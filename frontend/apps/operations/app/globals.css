@@ -3,3 +3,46 @@
 @import "../../../shared/styles.css";
 @source "./";
 @source "../features";
+
+@layer components {
+  .kardex-scroll {
+    max-block-size: clamp(14rem, 62svh, 38rem);
+    overflow: auto;
+    scroll-padding-block-start: 3rem;
+  }
+
+  .kardex-scroll:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .kardex-scroll .table-hce {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .kardex-scroll thead th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    box-shadow: 0 1px var(--color-rule);
+  }
+
+  @media (max-width: 56rem) {
+    .kardex-scroll .table-hce th,
+    .kardex-scroll .table-hce td {
+      padding-inline: .7rem;
+    }
+  }
+
+  @media (max-width: 41rem) {
+    .kardex-scroll td:nth-child(2),
+    .kardex-scroll td:last-child {
+      z-index: 1;
+    }
+
+    .kardex-scroll th:nth-child(2),
+    .kardex-scroll th:last-child {
+      z-index: 3;
+    }
+  }
+}

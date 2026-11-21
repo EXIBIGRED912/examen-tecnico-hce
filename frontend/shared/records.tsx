@@ -1,12 +1,12 @@
 'use client';
 
-import { ChevronDown, Search, X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, errorMessage } from './api';
+import { ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { api, errorMessage, units } from './api';
 
 type Records<T> = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; data: T };
 
-export function useRecords<T>(path: string) {
+export function useRecords<T>(path: string, refreshKey?: number) {
   const [records, setRecords] = useState<Records<T>>({ state: 'loading' });
   const [revision, setRevision] = useState(0);
 
@@ -20,7 +20,7 @@ export function useRecords<T>(path: string) {
         if (!controller.signal.aborted) setRecords({ state: 'error', message: errorMessage(reason) });
       });
     return () => controller.abort();
-  }, [path, revision]);
+  }, [path, revision, refreshKey]);
 
   return {
     records,
@@ -49,6 +49,108 @@ export function LoadState<T>({ records, retry, children }: {
       <span className="skeleton" /><span className="skeleton" /><span className="skeleton" />
     </div>)}
   </div>;
+}
+
+const rowLimits = [5, 10, 25, 50];
+
+function TablePager({ label, placement, framed, tableId, page, pageCount, onChange }: {
+  label: string;
+  placement: 'top' | 'bottom';
+  framed: boolean;
+  tableId: string;
+  page: number;
+  pageCount: number;
+  onChange: (page: number) => void;
+}) {
+  const location = placement === 'top' ? 'arriba' : 'abajo';
+  return <nav className={`record-table-pager record-table-pager-${placement}${framed ? ' record-table-pager-framed' : ''}`}
+    aria-label={`Páginas de ${label.toLocaleLowerCase('es-PE')} · ${location}`}>
+    <button className="button button-icon" type="button" aria-label="Página anterior" aria-controls={tableId}
+      disabled={page <= 1} onClick={() => onChange(page - 1)}>
+      <ChevronLeft aria-hidden="true" size={18} />
+    </button>
+    {pageCount > 0 ? <>
+      <label className="record-table-page">
+        Página
+        <span className="select-wrap">
+          <select className="input data" aria-controls={tableId} value={page} disabled={pageCount === 1}
+            onChange={(event) => onChange(Number(event.currentTarget.value))}>
+            {Array.from({ length: pageCount }, (_, index) => index + 1).map((option) => <option key={option} value={option}>{units.format(option)}</option>)}
+          </select>
+          <SelectIcon />
+        </span>
+      </label>
+      <span className="muted data">de {units.format(pageCount)}</span>
+    </> : <span className="record-table-no-pages muted">Sin páginas</span>}
+    <button className="button button-icon" type="button" aria-label="Página siguiente" aria-controls={tableId}
+      disabled={page >= pageCount} onClick={() => onChange(page + 1)}>
+      <ChevronRight aria-hidden="true" size={18} />
+    </button>
+  </nav>;
+}
+
+export function RecordTable<T>({ rows, label, title, search, searchTerm, children, scrollClassName, empty }: {
+  rows: readonly T[];
+  label: string;
+  title?: string;
+  search?: ReactNode;
+  searchTerm?: string;
+  children: (visibleRows: readonly T[]) => ReactNode;
+  scrollClassName?: string;
+  empty?: ReactNode;
+}) {
+  const [limit, setLimit] = useState<number | 'all'>(rowLimits[0]);
+  const [position, setPosition] = useState({ searchTerm, page: 1 });
+  const tableId = useId();
+  const tableRegion = useRef<HTMLDivElement>(null);
+  const pageCount = limit === 'all' ? 1 : Math.max(1, Math.ceil(rows.length / limit));
+  const page = position.searchTerm === searchTerm ? Math.min(position.page, pageCount) : 1;
+  if (position.searchTerm !== searchTerm || position.page !== page) setPosition({ searchTerm, page });
+
+  const start = limit === 'all' ? 0 : (page - 1) * limit;
+  const end = limit === 'all' ? rows.length : Math.min(start + limit, rows.length);
+  const visibleRows = rows.slice(start, end);
+  const range = end === start + 1 ? units.format(end) : `${units.format(start + 1)}–${units.format(end)}`;
+  const summary = rows.length === 0 ? '0 registros'
+    : `${range} de ${units.format(rows.length)} ${rows.length === 1 ? 'registro' : 'registros'}`;
+  const toolbarClass = ['record-table-toolbar', title && 'record-table-titled', search && 'record-table-searchable']
+    .filter(Boolean).join(' ');
+  const pagerProps = {
+    label, framed: Boolean(title), tableId, page, pageCount: rows.length ? pageCount : 0,
+    onChange: (nextPage: number) => setPosition({ searchTerm, page: nextPage }),
+  };
+
+  useEffect(() => {
+    tableRegion.current?.scrollTo({ top: 0 });
+  }, [limit, page, searchTerm]);
+
+  return <>
+    <div className={toolbarClass}>
+      {title && <h2 className="record-table-title">{title}</h2>}
+      <p className="record-table-count muted data" role="status">{summary}</p>
+      {search && <div className="record-table-search">{search}</div>}
+      <label className="record-table-limit">
+        Filas visibles
+        <span className="select-wrap">
+          <select className="input data" aria-controls={tableId} value={limit} onChange={(event) => {
+            const value = event.currentTarget.value;
+            setLimit(value === 'all' ? 'all' : Number(value));
+            setPosition({ searchTerm, page: 1 });
+          }}>
+            {rowLimits.map((size) => <option key={size} value={size}>{units.format(size)}</option>)}
+            <option value="all">Todas</option>
+          </select>
+          <SelectIcon />
+        </span>
+      </label>
+    </div>
+    <TablePager {...pagerProps} placement="top" />
+    {!rows.length && empty !== undefined ? <div id={tableId}>{empty}</div>
+      : <div className={scrollClassName ? `scroll-table ${scrollClassName}` : 'scroll-table'} id={tableId} ref={tableRegion} tabIndex={0} role="region" aria-label={label}>
+        {children(visibleRows)}
+      </div>}
+    <TablePager {...pagerProps} placement="bottom" />
+  </>;
 }
 
 export function Dialog({ title, subtitle, wide, busy, onClose, children }: {
@@ -97,7 +199,7 @@ export function SearchField({ value, onChange, label }: {
   onChange: (term: string) => void;
   label: string;
 }) {
-  return <label className="relative block w-full sm:w-64">
+  return <label className="relative block w-full">
     <span className="sr-only">{label}</span>
     <Search className="muted pointer-events-none absolute top-3.5 left-3" aria-hidden="true" size={17} />
     <input className="input pl-9" name="q" type="search" value={value} onChange={(event) => onChange(event.target.value)} placeholder={label} />

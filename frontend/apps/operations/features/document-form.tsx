@@ -241,7 +241,7 @@ export function DocumentForm({ kind }: { kind: Kind }) {
         </aside>
       </form>}
     </LoadState>
-    <DocumentHistory name={copy.history} path={copy.path} key={historyRevision} />
+    <DocumentHistory name={copy.history} path={copy.path} refreshKey={historyRevision} />
     {newProduct && <ProductDialog onClose={() => setNewProduct(false)} onSaved={attachProduct} />}
   </>;
 }

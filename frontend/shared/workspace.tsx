@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Boxes, ClipboardList, LogOut, PackagePlus, ShoppingBag } from 'lucide-react';
+import { Activity, Boxes, ClipboardList, LogOut, PackagePlus, ShoppingBag, UserRound } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorMessage, type Session } from './api';
 
@@ -13,9 +13,26 @@ const destinations = [
 
 export function Brand() {
   return <a className="brand" href="/">
-    <span className="brand-mark"><Activity aria-hidden="true" size={21} strokeWidth={2.4} /></span>
+    <span className="brand-mark"><Activity aria-hidden="true" size={22} strokeWidth={2.3} /></span>
     <span>Inventario HCE</span>
   </a>;
+}
+
+function SessionControls({ username, loggingOut, logout, mobile }: {
+  username: string;
+  loggingOut: boolean;
+  logout: () => void;
+  mobile?: boolean;
+}) {
+  return <div className={`workspace-account ${mobile ? 'workspace-account-mobile' : 'workspace-account-desktop'}`}>
+    <div className="workspace-user" title={username}>
+      <span className="workspace-avatar"><UserRound aria-hidden="true" size={16} /></span>
+      <span className="workspace-username">{username}</span>
+    </div>
+    <button className="workspace-logout" type="button" onClick={logout} disabled={loggingOut}>
+      <LogOut aria-hidden="true" size={16} /> {loggingOut ? 'Saliendo…' : 'Salir'}
+    </button>
+  </div>;
 }
 
 export function Workspace({ current, children }: { current: string; children: ReactNode }) {
@@ -51,26 +68,23 @@ export function Workspace({ current, children }: { current: string; children: Re
   }
 
   return <>
-    <header className="topbar">
-      <div className="container-hce flex min-h-16 flex-wrap items-center justify-between gap-x-4 py-2">
+    <header className="topbar workspace-header">
+      <div className="container-hce workspace-topbar">
+        <a className="workspace-skip" href="#contenido">Ir al contenido</a>
         <Brand />
         {session && <>
-          <nav className="flex items-center gap-1" aria-label="Módulos">
+          <SessionControls username={session.username} loggingOut={loggingOut} logout={logout} mobile />
+          <nav className="module-nav" aria-label="Módulos">
             {destinations.map(({ href, label, icon: Icon }) => <a key={href} className="nav-link" href={href} aria-current={current === href ? 'page' : undefined}>
-              <Icon aria-hidden="true" size={17} />
-              {label}
+              <Icon aria-hidden="true" size={18} />
+              <span>{label}</span>
             </a>)}
           </nav>
-          <div className="flex items-center gap-2">
-            <span className="muted hidden text-sm lg:inline">{session.username}</span>
-            <button className="quiet" type="button" onClick={logout} disabled={loggingOut}>
-              <LogOut aria-hidden="true" size={16} /> {loggingOut ? 'Saliendo…' : 'Salir'}
-            </button>
-          </div>
+          <SessionControls username={session.username} loggingOut={loggingOut} logout={logout} />
         </>}
       </div>
     </header>
-    <main id="contenido" className="container-hce py-8 sm:py-10">
+    <main id="contenido" className="container-hce py-8 sm:py-10" tabIndex={-1}>
       {loading && <div role="status" className="panel p-5">Comprobando sesión…</div>}
       {!loading && error && <div className="notice notice-error mb-4" role="alert">
         {error}

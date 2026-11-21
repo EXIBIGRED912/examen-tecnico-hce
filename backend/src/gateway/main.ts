@@ -26,6 +26,7 @@ async function bootstrap(): Promise<void> {
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Accept', 'Content-Type', 'Idempotency-Key'],
+    exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   });
   app.use(cookieParser());
   app.use('/api', (request: Request, response: Response, next: NextFunction) => {

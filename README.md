@@ -62,7 +62,7 @@ Los procedimientos validan existencias dentro de la transacción que escribe el 
 
 El shell Next.js atiende la navegación y la sesión. Las rutas `/operaciones/*` se sirven desde la zona de operaciones mediante rewrites y su bundle se despliega de forma independiente. El navegador consume el gateway en `:3001`. El gateway centraliza autenticación y enrutamiento, y las operaciones internas viajan por TCP entre contenedores. Catálogo e inventario encapsulan la persistencia detrás de puertos y adaptadores. La base común mantiene la atomicidad de documento, movimiento y costo.
 
-El JWT dura 30 minutos y viaja en una cookie HttpOnly. Axios incluye las credenciales en las solicitudes y gestiona respuestas de sesión vencida. El gateway comprueba el origen de las operaciones de escritura, aplica CORS, Helmet y límites de peticiones. Los datos y credenciales de ejemplo corresponden a ejecución local.
+El JWT dura 30 minutos y viaja en una cookie HttpOnly. Axios incluye las credenciales en las solicitudes y gestiona respuestas de sesión vencida. El gateway comprueba el origen de las operaciones de escritura y aplica CORS y Helmet. El login admite 10 solicitudes por minuto por IP. El portal muestra los intentos restantes tras un rechazo de credenciales y usa `Retry-After` para indicar la espera tras un HTTP 429. Los datos y credenciales de ejemplo corresponden a ejecución local.
 
 ## Pruebas
 

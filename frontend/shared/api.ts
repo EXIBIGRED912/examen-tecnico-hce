@@ -46,10 +46,20 @@ export interface Movement {
 }
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status?: number) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly rateLimit?: { limit?: number; remaining?: number; retryAfter?: number },
+  ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+function readRateLimitHeader(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
 export const api = axios.create({
@@ -82,7 +92,12 @@ api.interceptors.response.use(
       : status === 429 ? 'Hay demasiadas solicitudes. Espera un momento y vuelve a intentar.'
       : status ? 'La operación no pudo completarse.'
       : 'No se pudo establecer comunicación con el servidor. Vuelve a intentar.';
-    return Promise.reject(new ApiError(message, status));
+    const headers = reason.response?.headers;
+    return Promise.reject(new ApiError(message, status, {
+      limit: readRateLimitHeader(headers?.['x-ratelimit-limit']),
+      remaining: readRateLimitHeader(headers?.['x-ratelimit-remaining']),
+      retryAfter: readRateLimitHeader(headers?.['retry-after']),
+    }));
   },
 );
 
